@@ -244,15 +244,18 @@ end $$;
 -- ---------------------------------------------------------------------------
 -- Finance
 -- ---------------------------------------------------------------------------
+-- security definer: finance_reports-only roles may see aggregates without row access; permission checked below
 create or replace function public.report_finance(p_from date, p_to date)
-returns jsonb language plpgsql stable as $$
+returns jsonb language plpgsql stable security definer set search_path = public as $
 declare
   res jsonb;
   v_today date := public.today_dhaka();
   v_month date := date_trunc('month', v_today)::date;
   v_year date := date_trunc('year', v_today)::date;
 begin
-  perform public.require_permission('finance','view');
+  if not (public.has_permission('finance','view') or public.has_permission('finance_reports','view')) then
+    raise exception 'Permission denied: finance' using errcode = '42501';
+  end if;
   with t as (select * from public.transactions where deleted_at is null)
   select jsonb_build_object(
     'period', (select jsonb_build_object(

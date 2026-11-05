@@ -227,6 +227,7 @@ create policy ai_messages_own on public.ai_messages for all to authenticated
   using (conversation_id in (select id from public.ai_conversations where user_id = auth.uid()))
   with check (conversation_id in (select id from public.ai_conversations where user_id = auth.uid()));
 create policy ai_query_logs_select on public.ai_query_logs for select to authenticated using (public.has_permission('audit','view') or user_id = auth.uid());
+create policy ai_query_logs_insert on public.ai_query_logs for insert to authenticated with check (user_id = auth.uid());
 
 create policy settings_select on public.settings for select to authenticated using (true);
 create policy settings_write on public.settings for all to authenticated
