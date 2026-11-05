@@ -10,11 +10,28 @@ test("operator enrolls a student through the multi-step form", async ({ page }) 
   await page.getByLabel("Date of birth").fill("2003-04-12");
   await page.getByLabel("Phone").fill(`+8801${Date.now().toString().slice(-9)}`);
   await page.getByLabel("Email").fill(`${Date.now()}@e2e.test`);
-  // walk through every step to the last one
-  for (let i = 0; i < 8; i++) await page.getByRole("button", { name: "Next" }).click();
+  // step 2: Documents — passport number plus multiple supporting documents
+  await page.getByRole("button", { name: "Next" }).click();
+  await expect(page.getByRole("heading", { name: "2. Documents" })).toBeVisible();
+  await page.getByLabel("Passport number").fill(`E${Date.now().toString().slice(-8)}`);
+  const pdf = (name: string) => ({ name, mimeType: "application/pdf", buffer: Buffer.from("%PDF-1.4\n%e2e\n") });
+  await page.getByLabel("Category for next upload").selectOption("Passport");
+  await page.locator('fieldset:has-text("Supporting documents") input[type="file"]').setInputFiles([pdf("passport-scan.pdf")]);
+  await expect(page.getByLabel("Documents to attach").getByText("passport-scan.pdf")).toBeVisible();
+  await page.getByLabel("Category for next upload").selectOption("Transcript");
+  await page.locator('fieldset:has-text("Supporting documents") input[type="file"]').setInputFiles([pdf("hsc-transcript.pdf")]);
+  await expect(page.getByLabel("Documents to attach").getByText("hsc-transcript.pdf")).toBeVisible();
+  // walk through the remaining steps to the last one
+  for (let i = 0; i < 7; i++) await page.getByRole("button", { name: "Next" }).click();
   await page.getByTestId("student-submit").click();
   await page.waitForURL(/\/students\/[0-9a-f-]{36}$/);
   await expect(page.getByRole("heading", { name })).toBeVisible();
+  // the uploaded documents were recorded with their categories
+  await page.goto(`${new URL(page.url()).pathname}?tab=documents`);
+  await expect(page.getByText("passport-scan.pdf")).toBeVisible();
+  await expect(page.getByText("hsc-transcript.pdf")).toBeVisible();
+  await expect(page.getByRole("listitem").filter({ hasText: /^Passport\s*received$/ })).toBeVisible();
+  await expect(page.getByRole("listitem").filter({ hasText: /^Transcript\s*received$/ })).toBeVisible();
   // shows up in the list search
   await page.goto(`/students?q=${encodeURIComponent(name)}`);
   await expect(page.getByRole("link", { name })).toBeVisible();

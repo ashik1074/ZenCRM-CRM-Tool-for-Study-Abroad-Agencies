@@ -5,7 +5,7 @@ import { useEffect, useState, useTransition } from "react";
 import { useFieldArray, useForm, type FieldPath, type UseFormReturn } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
-import { AlertTriangle, Check, ChevronLeft, ChevronRight, Loader2, Plus, Save, Trash2, X } from "lucide-react";
+import { AlertTriangle, Check, ChevronLeft, ChevronRight, FileText, Loader2, Plus, Save, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -15,13 +15,14 @@ import { Label } from "@/components/ui/label";
 import { Field, nativeSelectClass } from "@/components/shared/field";
 import { FileUploader } from "@/components/shared/file-uploader";
 import { cn } from "@/lib/utils";
-import { daysUntil, fmtDate } from "@/lib/format";
+import { bytes, daysUntil, fmtDate } from "@/lib/format";
+import { createClient as createBrowserSupabase } from "@/lib/supabase/client";
 import { DEGREE_LEVELS, EDUCATION_LEVELS, GENDERS, HSK_LEVELS, SCHOLARSHIP_TYPES, STUDENT_STATUSES } from "@/lib/constants";
 import { STEP_FIELDS, studentFinalSchema, studentSchema, type StudentFormInput, type StudentFormValues } from "@/lib/validation/student";
 import { findDuplicates, saveStudent, type DuplicateHit } from "@/server/actions/students";
 import { getSignedUrls } from "@/server/actions/files";
 
-const STEPS = ["Personal", "Passport", "Family", "Education", "Work", "Language", "Preferences", "Travel", "Source"];
+const STEPS = ["Personal", "Documents", "Family", "Education", "Work", "Language", "Preferences", "Travel", "Source"];
 
 type Form = UseFormReturn<StudentFormInput, unknown, StudentFormValues>;
 type Opt = { id: string; full_name: string };
@@ -34,7 +35,7 @@ export function StudentForm({
 }: {
   initial?: StudentFormInput;
   counselors: Opt[];
-  lists: { intakes: string[]; leadSources: string[] };
+  lists: { intakes: string[]; leadSources: string[]; documentCategories: string[] };
   mode: "create" | "edit";
 }) {
   const router = useRouter();
@@ -52,6 +53,7 @@ export function StudentForm({
       mother: { name: "", date_of_birth: "" },
       spouse: { name: "", date_of_birth: "" },
       children: [],
+      documents: [],
       education: [],
       work: [],
       valid_visas: [],
@@ -183,6 +185,7 @@ export function StudentForm({
           )}
 
           {step === 1 && (
+            <div className="space-y-6">
             <div className="grid gap-4 sm:grid-cols-3">
               <Field label="Passport number" error={e.passport_no?.message}>{(p) => <Input {...p} {...register("passport_no")} className="uppercase" />}</Field>
               <Field label="Issue date" error={e.passport_issue_date?.message}>{(p) => <Input type="date" {...p} {...register("passport_issue_date")} />}</Field>
@@ -195,6 +198,8 @@ export function StudentForm({
                     : `This passport expires in ${expiryDays} days. China requires at least 6 months' validity — ask the student to renew.`}
                 </p>
               )}
+            </div>
+            <SupportingDocuments form={form} studentId={studentId} categories={lists.documentCategories} mode={mode} />
             </div>
           )}
 
@@ -502,3 +507,71 @@ function TravelStep({ form }: { form: Form }) {
   );
 }
 
+function SupportingDocuments({ form, studentId, categories, mode }: { form: Form; studentId: string; categories: string[]; mode: "create" | "edit" }) {
+  const docs = useFieldArray({ control: form.control, name: "documents" });
+  const cats = categories.length ? categories : ["Passport", "Other"];
+  const [category, setCategory] = useState(cats[0]);
+  const [expiry, setExpiry] = useState("");
+  const errs = form.formState.errors.documents;
+  return (
+    <fieldset className="space-y-3 rounded-lg border p-4">
+      <legend className="px-1 text-sm font-semibold">Supporting documents</legend>
+      <p className="text-sm text-muted-foreground">
+        Upload the passport scan and any other documents (photo, transcripts, certificates, bank statement…). Pick a category before uploading; you can change it per file below.
+        {mode === "edit" && " Documents already on file are listed on the student's Documents & Files tab."}
+      </p>
+      <div className="grid gap-3 sm:grid-cols-[200px_170px_1fr] sm:items-end">
+        <Field label="Category for next upload">
+          {(p) => (
+            <select className={nativeSelectClass} {...p} value={category} onChange={(e) => setCategory(e.target.value)}>
+              {cats.map((c) => <option key={c}>{c}</option>)}
+            </select>
+          )}
+        </Field>
+        <Field label="Expiry date (optional)">{(p) => <Input type="date" {...p} value={expiry} onChange={(e) => setExpiry(e.target.value)} />}</Field>
+        <FileUploader
+          bucket="student-files"
+          folder={studentId}
+          compact
+          label="Add documents (you can select several)"
+          onUploaded={(f) => docs.append({ ...f, category, expiry_date: expiry })}
+        />
+      </div>
+      {docs.fields.length > 0 && (
+        <ul className="divide-y rounded-md border" aria-label="Documents to attach">
+          {docs.fields.map((d, i) => (
+            <li key={d.id} className="grid items-center gap-2 p-2 sm:grid-cols-[1fr_190px_160px_auto]">
+              <div className="flex min-w-0 items-center gap-2">
+                <FileText className="h-4 w-4 shrink-0 text-primary" aria-hidden />
+                <span className="truncate text-sm" title={d.file_name}>{d.file_name}</span>
+                <span className="shrink-0 text-xs text-muted-foreground">{bytes(d.size_bytes)}</span>
+              </div>
+              <select aria-label={`Category for ${d.file_name}`} className={nativeSelectClass} {...form.register(`documents.${i}.category`)}>
+                {Array.from(new Set([...cats, d.category])).map((c) => <option key={c}>{c}</option>)}
+              </select>
+              <Input type="date" aria-label={`Expiry date for ${d.file_name}`} {...form.register(`documents.${i}.expiry_date`)} />
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                aria-label={`Remove ${d.file_name}`}
+                onClick={async () => {
+                  docs.remove(i);
+                  await createBrowserSupabase().storage.from("student-files").remove([d.file_path]);
+                }}
+              >
+                <Trash2 />
+              </Button>
+              {errs?.[i] && (
+                <p className="text-sm text-destructive sm:col-span-4">
+                  {Object.values(errs[i] ?? {}).map((x) => (x as { message?: string })?.message).filter(Boolean).join(", ")}
+                </p>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+      {docs.fields.length > 0 && <p className="text-xs text-muted-foreground">{docs.fields.length} file(s) will be attached when you save the student (draft or final).</p>}
+    </fieldset>
+  );
+}

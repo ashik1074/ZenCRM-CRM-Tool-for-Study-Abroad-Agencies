@@ -127,6 +127,18 @@ export async function saveStudent(
       { kind: "visit" },
     );
 
+    // supporting documents uploaded on the Documents step
+    if (v.documents.length) {
+      for (const d of v.documents) {
+        if (!d.file_path.startsWith(`${id}/`)) throw new Error(`${d.file_name}: invalid file location.`);
+        if (d.mime_type && !ALLOWED_MIME.includes(d.mime_type)) throw new Error(`${d.file_name}: this file type isn't allowed.`);
+      }
+      must(await supabase.from("student_documents").insert(v.documents.map((d) => ({
+        student_id: id, category: d.category, file_path: d.file_path, file_name: d.file_name,
+        mime_type: nul(d.mime_type), size_bytes: d.size_bytes, expiry_date: nul(d.expiry_date),
+      }))));
+    }
+
     revalidatePath("/students");
     revalidatePath(`/students/${id}`);
     return { id: id! };

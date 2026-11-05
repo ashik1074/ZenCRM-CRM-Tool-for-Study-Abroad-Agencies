@@ -53,6 +53,18 @@ export const studentSchema = z.object({
   passport_no: optStr(30),
   passport_issue_date: optDate,
   passport_expiry_date: optDate,
+  // supporting documents uploaded during enrollment (recorded when the student is saved)
+  documents: z
+    .array(z.object({
+      file_path: reqStr("File", 500),
+      file_name: reqStr("File name", 255),
+      mime_type: optStr(120),
+      size_bytes: z.number().int().nonnegative().max(10 * 1024 * 1024, "Files must be 10 MB or smaller"),
+      category: reqStr("Category", 60),
+      expiry_date: optDate,
+    }))
+    .max(30, "Upload at most 30 documents at a time")
+    .default([]),
   // 3. family
   father: personDob,
   mother: personDob,
@@ -106,7 +118,7 @@ export const studentFinalSchema = studentSchema.superRefine((v, ctx) => {
 /** Which fields live on which step (used to validate a step before moving on and to jump to errors). */
 export const STEP_FIELDS: Record<number, string[]> = {
   0: ["full_name", "gender", "date_of_birth", "nationality", "phone", "whatsapp", "email", "present_address", "permanent_address"],
-  1: ["passport_no", "passport_issue_date", "passport_expiry_date"],
+  1: ["passport_no", "passport_issue_date", "passport_expiry_date", "documents"],
   2: ["father", "mother", "spouse", "children"],
   3: ["education"],
   4: ["work"],
