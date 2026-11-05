@@ -1,0 +1,59 @@
+1.Passport
+2.Photo
+3.Admission
+4.JW
+5.Bank Statement and Solvency
+6.Information
+……………………………………
+Work Information in Bangladesh(If Have)
+
+Start Date(YY/MM/DD): 
+End Date(YY/MM/DD):
+Name of Company: 
+Address Of Employer:
+Telephone number of your employer:
+Position:
+Duty:
+Supervisor's name:
+Supervisor's Telephone number:
+……………………………………
+
+
+Education from HSC(level) if you have:  
+
+Name of school: 
+Diploma/Degree: 
+Major: 
+……………………………………
+Name of school: 
+Diploma/Degree: 
+Major:  
+……………………………………
+Name of school: 
+Diploma/Degree: 
+Major:
+……………………………………
+
+Your Phone Number:
+Your Gmail:
+……………………………………
+
+Father Date of Birth:
+Mother Date of Birth:
+Spouse Name (If Have): 
+Spouse Date of Birth:
+Children Name:
+Children Date of Birth:
+……………………………………
+
+Do you currently hold any valid visas issued by other countries? (If yes, write where)
+
+Ans:
+
+Have you travelled to any other countries in the past 12 months? (If yes, write where)
+Ans. 
+
+Do you have previous China visa? (If yes)
+Ans. Sent all China Visa Copy
+Do you have previous China residence? (If yes)
+Ans. Sent all China residence Copy
