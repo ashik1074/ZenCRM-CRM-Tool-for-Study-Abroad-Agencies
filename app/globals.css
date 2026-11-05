@@ -91,3 +91,15 @@
   content: attr(data-placeholder);
   @apply text-muted-foreground float-left h-0 pointer-events-none;
 }
+
+/* Chart palette — validated categorical order (dataviz reference palette), stepped per mode */
+:root {
+  --series-1: #2a78d6; --series-2: #eb6834; --series-3: #1baf7a; --series-4: #eda100;
+  --series-5: #e87ba4; --series-6: #008300; --series-7: #6250d6; --series-8: #e34948;
+  --chart-grid: #e5e5e3; --chart-axis: #52514e; --chart-surface: #ffffff;
+}
+.dark {
+  --series-1: #3987e5; --series-2: #d95926; --series-3: #199e70; --series-4: #c98500;
+  --series-5: #d55181; --series-6: #008300; --series-7: #9085e9; --series-8: #e66767;
+  --chart-grid: #2c2f36; --chart-axis: #c3c2b7; --chart-surface: hsl(222 40% 10%);
+}

@@ -69,6 +69,7 @@ export default async function OffersPage({ searchParams }: { searchParams: Searc
           export: can(user.permissions, "offers", "export"),
         }}
         initialOfferId={sp(searchParams, "offer")}
+        openNew={sp(searchParams, "new") === "1"}
       />
     </>
   );

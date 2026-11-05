@@ -42,9 +42,10 @@ export function OffersClient(props: {
   intakes: string[];
   perms: Perms;
   initialOfferId?: string;
+  openNew?: boolean;
 }) {
   const [openId, setOpenId] = useState<string | null>(props.initialOfferId ?? null);
-  const [editingId, setEditingId] = useState<string | "new" | null>(null);
+  const [editingId, setEditingId] = useState<string | "new" | null>(props.openNew && props.perms.create ? "new" : null);
   const qs = useSearchParams().toString();
   useEffect(() => {
     if (props.initialOfferId) setOpenId(props.initialOfferId);

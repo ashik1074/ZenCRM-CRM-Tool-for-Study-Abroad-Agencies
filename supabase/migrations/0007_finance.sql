@@ -72,6 +72,7 @@ create table if not exists public.fee_installments (
   created_by uuid references public.profiles(id) on delete set null,
   deleted_at timestamptz
 );
+alter table public.fee_installments add column if not exists is_settled boolean generated always as (paid_amount >= amount) stored;
 create index if not exists idx_fee_installments_plan on public.fee_installments(fee_plan_id);
 create index if not exists idx_fee_installments_due on public.fee_installments(due_date);
 create index if not exists idx_fee_installments_created_by on public.fee_installments(created_by);

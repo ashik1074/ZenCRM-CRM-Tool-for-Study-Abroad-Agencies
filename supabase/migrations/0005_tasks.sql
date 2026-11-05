@@ -36,6 +36,9 @@ create table if not exists public.tasks (
   created_by uuid references public.profiles(id) on delete set null,
   deleted_at timestamptz
 );
+-- numeric priority for server-side ordering (urgent first)
+alter table public.tasks add column if not exists priority_rank int generated always as (
+  case priority when 'urgent' then 0 when 'high' then 1 when 'medium' then 2 else 3 end) stored;
 create index if not exists idx_tasks_assignee on public.tasks(assignee_id);
 create index if not exists idx_tasks_reporter on public.tasks(reporter_id);
 create index if not exists idx_tasks_sprint on public.tasks(sprint_id);
