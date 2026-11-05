@@ -9,7 +9,7 @@ import {
 import { initials } from "@/lib/format";
 import { signOut } from "@/server/actions/auth";
 
-export function UserMenu({ user }: { user: { name: string; email: string; role: string } }) {
+export function UserMenu({ user, accountHref = "/account" }: { user: { name: string; email: string; role: string }; accountHref?: string }) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -28,7 +28,7 @@ export function UserMenu({ user }: { user: { name: string; email: string; role: 
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuItem asChild>
-          <Link href="/account">
+          <Link href={accountHref}>
             <UserCog /> My account
           </Link>
         </DropdownMenuItem>

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { AlertTriangle, Mail, MessageCircle, Pencil, Phone, Trash2 } from "lucide-react";
+import { AlertTriangle, Mail, MessageCircle, Pencil, Phone } from "lucide-react";
 import { requirePagePermission } from "@/server/auth";
 import { createClient } from "@/lib/supabase/server";
 import { can } from "@/lib/permissions";

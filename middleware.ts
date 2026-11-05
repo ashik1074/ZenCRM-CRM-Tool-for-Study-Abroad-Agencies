@@ -58,7 +58,7 @@ export async function middleware(request: NextRequest) {
   if (path === "/") {
     return NextResponse.redirect(new URL(ctx.portal === "student" ? "/portal" : "/dashboard", request.url));
   }
-  if (ctx.portal === "student" && !path.startsWith("/portal") && !path.startsWith("/account")) {
+  if (ctx.portal === "student" && !path.startsWith("/portal")) {
     return NextResponse.redirect(new URL("/portal", request.url));
   }
 
