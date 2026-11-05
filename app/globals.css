@@ -2,26 +2,92 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@media (prefers-color-scheme: dark) {
+@layer base {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --background: 0 0% 100%;
+    --foreground: 222 47% 11%;
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+    --primary: 199 89% 32%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 210 40% 96%;
+    --secondary-foreground: 222 47% 11%;
+    --muted: 210 40% 96%;
+    --muted-foreground: 215 19% 35%;
+    --accent: 199 70% 94%;
+    --accent-foreground: 199 89% 22%;
+    --destructive: 0 72% 45%;
+    --destructive-foreground: 0 0% 100%;
+    --success: 142 72% 29%;
+    --success-foreground: 0 0% 100%;
+    --warning: 32 95% 44%;
+    --warning-foreground: 0 0% 100%;
+    --border: 214 32% 89%;
+    --input: 214 32% 85%;
+    --ring: 199 89% 40%;
+    --chart-1: 199 89% 40%;
+    --chart-2: 25 95% 53%;
+    --chart-3: 142 60% 40%;
+    --chart-4: 262 60% 55%;
+    --chart-5: 340 75% 52%;
+    --radius: 0.5rem;
+  }
+  .dark {
+    --background: 222 47% 7%;
+    --foreground: 210 40% 96%;
+    --card: 222 40% 10%;
+    --card-foreground: 210 40% 96%;
+    --popover: 222 40% 10%;
+    --popover-foreground: 210 40% 96%;
+    --primary: 199 89% 56%;
+    --primary-foreground: 222 47% 8%;
+    --secondary: 217 33% 17%;
+    --secondary-foreground: 210 40% 96%;
+    --muted: 217 33% 17%;
+    --muted-foreground: 215 20% 70%;
+    --accent: 199 50% 18%;
+    --accent-foreground: 199 90% 85%;
+    --destructive: 0 75% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --success: 142 60% 45%;
+    --success-foreground: 222 47% 8%;
+    --warning: 38 92% 55%;
+    --warning-foreground: 222 47% 8%;
+    --border: 217 33% 20%;
+    --input: 217 33% 24%;
+    --ring: 199 89% 56%;
+    --chart-1: 199 89% 56%;
+    --chart-2: 25 95% 60%;
+    --chart-3: 142 60% 50%;
+    --chart-4: 262 70% 70%;
+    --chart-5: 340 80% 65%;
   }
 }
 
-body {
-  color: var(--foreground);
-  background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "cv11", "ss01";
+  }
 }
 
-@layer utilities {
-  .text-balance {
-    text-wrap: balance;
-  }
+/* Rich text output */
+.prose-crm h1 { @apply text-xl font-semibold mt-3 mb-2; }
+.prose-crm h2 { @apply text-lg font-semibold mt-3 mb-2; }
+.prose-crm h3 { @apply font-semibold mt-2 mb-1; }
+.prose-crm p { @apply my-1.5; }
+.prose-crm ul { @apply list-disc pl-6 my-1.5; }
+.prose-crm ol { @apply list-decimal pl-6 my-1.5; }
+.prose-crm a { @apply text-primary underline; }
+.prose-crm blockquote { @apply border-l-4 pl-3 text-muted-foreground; }
+.prose-crm code { @apply rounded bg-muted px-1 text-sm; }
+.ProseMirror { @apply min-h-[120px] outline-none; }
+.ProseMirror p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  @apply text-muted-foreground float-left h-0 pointer-events-none;
 }

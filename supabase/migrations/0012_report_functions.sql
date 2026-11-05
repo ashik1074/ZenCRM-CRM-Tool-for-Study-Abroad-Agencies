@@ -370,3 +370,11 @@ begin
         and (k.search @@ plainto_tsquery('simple', p_q) or k.title ilike q) limit 5;
   end if;
 end $$;
+
+-- Attach a note to a status-history row (rows are trigger-written; no direct update policy)
+create or replace function public.annotate_status_history(p_id uuid, p_note text)
+returns void language plpgsql security definer set search_path = public as $$
+begin
+  perform public.require_permission('students','edit');
+  update public.student_status_history set note = left(p_note, 500) where id = p_id;
+end $$;

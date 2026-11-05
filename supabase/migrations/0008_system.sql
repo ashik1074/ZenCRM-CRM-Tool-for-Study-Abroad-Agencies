@@ -100,6 +100,10 @@ begin
     -- only keep changed fields to keep the log compact
     select jsonb_object_agg(k, v_old->k) into v_old from unnest(v_fields) k;
     select jsonb_object_agg(k, v_new->k) into v_new from unnest(v_fields) k;
+    -- keep the parent link so per-student activity can find child-row changes
+    if to_jsonb(new) ? 'student_id' then
+      v_new := v_new || jsonb_build_object('student_id', to_jsonb(new)->'student_id');
+    end if;
   end if;
   insert into public.audit_logs(table_name, record_id, action, actor_id, old_data, new_data, changed_fields)
   values (tg_table_name, v_id, v_action, auth.uid(), v_old, v_new, v_fields);
