@@ -6,7 +6,7 @@ import "./globals.css";
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
 
 export const metadata: Metadata = {
-  title: { default: "Study Abroad CRM", template: "%s · Study Abroad CRM" },
+  title: { default: "ZenCRM", template: "%s · ZenCRM" },
   description: "CRM for a Bangladesh → China study abroad agency",
 };
 

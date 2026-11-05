@@ -92,7 +92,7 @@ on conflict (currency, effective_date) do nothing;
 
 -- settings
 insert into public.settings (key, value) values
-  ('agency', '{"name":"Silk Road Study Abroad","logo_path":null,"phone":"+880 1700-000000","email":"info@example.com","address":"Dhaka, Bangladesh"}'),
+  ('agency', '{"name":"ZenCRM","logo_path":null,"phone":"+880 1700-000000","email":"info@example.com","address":"Dhaka, Bangladesh"}'),
   ('default_currency', '"BDT"'),
   ('intakes', '["March 2026","September 2026","March 2027","September 2027"]'),
   ('lead_sources', '["Facebook","Referral","Walk-in","Website","Agent"]'),

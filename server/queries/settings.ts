@@ -14,7 +14,7 @@ export const getSettings = cache(async () => {
 
 export async function getAgencySettings(): Promise<AgencySettings> {
   const s = await getSettings();
-  return (s.agency as AgencySettings) ?? { name: "Study Abroad CRM", logo_path: null };
+  return (s.agency as AgencySettings) ?? { name: "ZenCRM", logo_path: null };
 }
 
 export async function getLists() {

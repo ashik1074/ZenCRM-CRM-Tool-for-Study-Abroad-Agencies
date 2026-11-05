@@ -125,7 +125,7 @@ export async function getReceiptData(id: string) {
     .eq("type", "income")
     .single();
   const { data: agency } = await supabase.from("settings").select("value").eq("key", "agency").maybeSingle();
-  return { txn: data, agency: (agency?.value ?? { name: "Study Abroad Agency" }) as { name: string; phone?: string; email?: string; address?: string } };
+  return { txn: data, agency: (agency?.value ?? { name: "ZenCRM" }) as { name: string; phone?: string; email?: string; address?: string } };
 }
 
 // ---------------------------------------------------------------------------
