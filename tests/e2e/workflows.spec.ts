@@ -43,7 +43,7 @@ test("operator adds an offer and opens it in the modal", async ({ page }) => {
   const title = unique("E2E CSC Master offer");
   await page.goto("/offers?new=1");
   await page.getByLabel("Offer name / title").fill(title);
-  await page.getByLabel("University").selectOption({ index: 1 });
+  await page.locator('select[name="university_id"]').selectOption({ index: 1 });
   await page.getByLabel("Program / major").fill("Software Engineering");
   await page.getByLabel("Degree level").selectOption("Master");
   const deadline = new Date(Date.now() + 60 * 86400000).toISOString().slice(0, 10);

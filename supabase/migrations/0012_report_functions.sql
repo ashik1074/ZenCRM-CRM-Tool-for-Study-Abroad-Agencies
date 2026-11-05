@@ -246,7 +246,7 @@ end $$;
 -- ---------------------------------------------------------------------------
 -- security definer: finance_reports-only roles may see aggregates without row access; permission checked below
 create or replace function public.report_finance(p_from date, p_to date)
-returns jsonb language plpgsql stable security definer set search_path = public as $
+returns jsonb language plpgsql stable security definer set search_path = public as $$
 declare
   res jsonb;
   v_today date := public.today_dhaka();

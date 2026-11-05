@@ -46,7 +46,11 @@ export async function deleteUniversity(id: string): Promise<ActionResult<null>> 
 export async function saveOffer(input: OfferInput, attachments: { file_path: string; file_name: string; mime_type: string; size_bytes: number }[] = []): Promise<ActionResult<{ id: string }>> {
   return run(async () => {
     const v = offerSchema.parse(input);
-    await assertPermission("offers", v.id ? "edit" : "create");
+    const supabase = createClient();
+    // new offers carry a client-generated id (so leaflets can be uploaded first); decide by existence
+    const isUuid = /^[0-9a-f-]{36}$/i.test(v.id ?? "");
+    const exists = isUuid && !!(await supabase.from("offers").select("id").eq("id", v.id!).maybeSingle()).data;
+    await assertPermission("offers", exists ? "edit" : "create");
     const row = {
       title: v.title, university_id: v.university_id, program: v.program, degree_level: v.degree_level, intake: nul(v.intake),
       scholarship_type: nul(v.scholarship_type), covers_tuition: v.covers_tuition, covers_accommodation: v.covers_accommodation,
@@ -57,10 +61,9 @@ export async function saveOffer(input: OfferInput, attachments: { file_path: str
       // re-opening an offer whose deadline passed is blocked by the expiry trigger; that's intended
       status: v.status === "expired" ? "open" : v.status,
     };
-    const supabase = createClient();
-    const saved = (v.id
-      ? must(await supabase.from("offers").update(row).eq("id", v.id).select("id").single())
-      : must(await supabase.from("offers").insert({ ...row, id: /^[0-9a-f-]{36}$/i.test(input.id ?? "") ? input.id : undefined }).select("id").single())) as { id: string };
+    const saved = (exists
+      ? must(await supabase.from("offers").update(row).eq("id", v.id!).select("id").single())
+      : must(await supabase.from("offers").insert({ ...row, id: isUuid ? v.id : undefined }).select("id").single())) as { id: string };
     await addAttachments(saved.id, attachments);
     revalidatePath("/offers");
     return saved;

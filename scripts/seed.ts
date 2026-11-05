@@ -153,7 +153,7 @@ async function main() {
     const female = rand() < 0.4;
     const name = `${pick(female ? FIRST_F : FIRST_M)} ${pick(LAST)}`;
     const status = i < 39 ? STATUSES[i % STATUSES.length] : "registered";
-    const created = addDays(TODAY, -int(5, 330));
+    const created = i % 10 === 1 ? addDays(TODAY, -int(0, Math.max(0, TODAY.getDate() - 1))) : addDays(TODAY, -int(5, 330));
     const counselor = pick(counselors);
     const district = pick(DISTRICTS);
     const expiry = i % 7 === 0 ? addDays(TODAY, int(20, 170)) : addDays(TODAY, int(400, 3000));

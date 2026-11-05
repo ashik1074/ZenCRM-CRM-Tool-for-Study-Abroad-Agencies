@@ -63,9 +63,12 @@ npx playwright install chromium   # first time only
 npm run test:e2e                  # builds, starts on :3100, runs against your seeded Supabase project
 npx tsx scripts/checks/sql-guard.check.ts   # AI SQL guard allow/block cases (no DB needed)
 npx tsx scripts/checks/kb-exact.check.ts    # seeded visa checklist is byte-identical to the source
+npx tsx scripts/checks/rls.check.ts         # 27 RLS checks through the real API, signed in as each role
+npx tsx scripts/checks/reports.check.ts     # every report/dashboard SQL function runs
+npx tsx scripts/checks/ai-runner.check.ts   # assistant guard + readonly_ai runner on the example questions
 ```
 
-The e2e suite covers: login per role (menus), wrong password, HTTP 403 on restricted pages, enroll student, add task and change status, add offer and open the modal, add income and expense, and the AI assistant (count question, finance refusal for operators, verbatim checklist). The assistant tests are skipped when `ANTHROPIC_API_KEY` isn't set. The tests create records with an `E2E` prefix; re-run `npm run db:seed` to reset.
+The e2e suite also opens every page as every role (no server errors or console errors). It covers: login per role (menus), wrong password, HTTP 403 on restricted pages, enroll student, add task and change status, add offer and open the modal, add income and expense, and the AI assistant (count question, finance refusal for operators, verbatim checklist). The assistant tests are skipped when `ANTHROPIC_API_KEY` isn't set. The tests create records with an `E2E` prefix; re-run `npm run db:seed` to reset.
 
 ## 6. Project layout
 

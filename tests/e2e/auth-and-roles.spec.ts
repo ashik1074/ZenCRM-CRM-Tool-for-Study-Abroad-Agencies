@@ -33,7 +33,7 @@ test.describe("login per role", () => {
     await page.getByLabel("Email").fill(USERS.operator.email);
     await page.getByLabel("Password", { exact: true }).fill("wrong-password");
     await page.getByRole("button", { name: "Sign in" }).click();
-    await expect(page.getByRole("alert")).toContainText("Invalid email or password");
+    await expect(page.getByText("Invalid email or password.")).toBeVisible();
   });
 });
 

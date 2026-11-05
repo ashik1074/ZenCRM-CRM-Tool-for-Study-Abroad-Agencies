@@ -51,8 +51,11 @@ export async function getStudentInstallments(studentId: string): Promise<Install
 export async function saveTransaction(input: TransactionInput): Promise<ActionResult<{ id: string; receipt_no: string | null }>> {
   return run(async () => {
     const v = transactionSchema.parse(input);
-    await assertPermission("finance", v.id ? "edit" : "create");
     const supabase = createClient();
+    // the panel sends a client-generated id (receipt uploads go under it); decide create vs edit by existence
+    const isUuid = /^[0-9a-f-]{36}$/i.test(v.id ?? "");
+    const existing = isUuid ? (await supabase.from("transactions").select("id").eq("id", v.id!).maybeSingle()).data : null;
+    await assertPermission("finance", existing ? "edit" : "create");
     const cat = must(await supabase.from("transaction_categories").select("type").eq("id", v.category_id).single()) as { type: string };
     if (cat.type !== v.type) throw new Error("That category doesn't match the transaction type.");
     const row = {
@@ -70,8 +73,6 @@ export async function saveTransaction(input: TransactionInput): Promise<ActionRe
       note: nul(v.note),
       receipt_path: nul(v.receipt_path),
     };
-    const isUuid = /^[0-9a-f-]{36}$/i.test(v.id ?? "");
-    const existing = isUuid ? (await supabase.from("transactions").select("id").eq("id", v.id!).maybeSingle()).data : null;
     const saved = (existing
       ? must(await supabase.from("transactions").update(row).eq("id", v.id!).select("id, receipt_no").single())
       : must(await supabase.from("transactions").insert({ ...row, id: isUuid ? v.id : undefined }).select("id, receipt_no").single())) as { id: string; receipt_no: string | null };

@@ -88,7 +88,9 @@ export function AssistantChat({ conversationId, onConversation, compact }: { con
     if (conversationId) loadConversation(conversationId).then((m) => setMessages(m as Msg[]));
     else setMessages([]);
   }, [conversationId]);
-  useEffect(() => end.current?.scrollIntoView({ behavior: "smooth" }), [messages]);
+  useEffect(() => {
+    end.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
 
   async function send(text: string) {
     const q = text.trim();

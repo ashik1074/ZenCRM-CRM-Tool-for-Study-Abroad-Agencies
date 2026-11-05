@@ -25,7 +25,9 @@ export function StudentPicker({
   const [q, setQ] = useState("");
   const [items, setItems] = useState<StudentOption[]>([]);
   const [selectedLabel, setSelectedLabel] = useState(label ?? "");
-  useEffect(() => setSelectedLabel(label ?? ""), [label]);
+  useEffect(() => {
+    setSelectedLabel(label ?? "");
+  }, [label]);
 
   useEffect(() => {
     if (!open) return;

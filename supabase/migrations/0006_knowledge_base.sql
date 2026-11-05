@@ -1,5 +1,9 @@
 -- 0006: knowledge base.
 
+-- array_to_string is only STABLE; generated columns need an IMMUTABLE expression
+create or replace function public.tags_to_text(text[])
+returns text language sql immutable parallel safe as $$ select coalesce(array_to_string($1, ' '), '') $$;
+
 create table if not exists public.kb_entries (
   id uuid primary key default gen_random_uuid(),
   title text not null,
@@ -11,7 +15,7 @@ create table if not exists public.kb_entries (
   updated_by uuid references public.profiles(id) on delete set null,
   search tsvector generated always as (
     setweight(to_tsvector('simple', coalesce(title,'')), 'A') ||
-    setweight(to_tsvector('simple', array_to_string(tags, ' ')), 'B') ||
+    setweight(to_tsvector('simple', public.tags_to_text(tags)), 'B') ||
     setweight(to_tsvector('simple', coalesce(body_text,'')), 'C')
   ) stored,
   created_at timestamptz not null default now(),
