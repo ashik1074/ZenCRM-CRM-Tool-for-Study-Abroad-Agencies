@@ -11,6 +11,7 @@
     "db:migrate:all": "tsx scripts/migrate.ts --all",
     "db:seed": "tsx scripts/seed.ts",
     "db:setup": "npm run db:migrate && npm run db:seed",
+    "db:clear-demo": "tsx scripts/clear-demo.ts",
     "test:e2e": "playwright test",
     "typecheck": "tsc --noEmit"
   },
