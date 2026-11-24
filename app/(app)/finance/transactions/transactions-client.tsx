@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
+import { BulkDelete, BulkExport } from "@/components/shared/bulk-actions";
 import { DataTable, type ServerColumn } from "@/components/shared/data-table";
 import { EmptyState } from "@/components/shared/empty-state";
 import { ClearFilters, DateRangeFilter, FilterBar, SearchFilter, SelectFilter } from "@/components/shared/list-filters";
@@ -18,7 +19,7 @@ import { openTransactionSheet } from "@/components/finance/transaction-events";
 import { downloadMoneyReceipt } from "@/components/finance/money-receipt";
 import { PAYMENT_METHODS } from "@/lib/constants";
 import { fmtDate, fmtMoney } from "@/lib/format";
-import { deleteTransaction, updateTransactionField } from "@/server/actions/finance";
+import { bulkDeleteTransactions, deleteTransaction, updateTransactionField } from "@/server/actions/finance";
 import { getSignedUrls } from "@/server/actions/files";
 
 export type TxnRow = {
@@ -147,6 +148,25 @@ export function TransactionsClient(props: {
       </FilterBar>
       {canEdit && <p className="mb-2 text-xs text-muted-foreground">Tip: click a date, amount, category, method, reference or note to edit it in place.</p>}
       <DataTable columns={columns} data={props.rows} total={props.total} page={props.page} size={props.size} sort={props.sort} dir={props.dir} getRowId={(r) => r.id}
+        rowLabel={(t) => `${t.type} of ${t.amount} ${t.currency} on ${t.txn_date}`}
+        bulkActions={
+          props.perms.delete || props.perms.export
+            ? ({ selection, busy, exec }) => (
+                <>
+                  {props.perms.export && <BulkExport endpoint="/api/export/transactions" ids={selection.ids} disabled={busy} />}
+                  {props.perms.delete && (
+                    <BulkDelete
+                      count={selection.count}
+                      noun={["transaction", "transactions"]}
+                      disabled={busy}
+                      description="They move to Deleted items and are excluded from reports."
+                      onConfirm={() => exec(bulkDeleteTransactions)}
+                    />
+                  )}
+                </>
+              )
+            : undefined
+        }
         empty={<EmptyState icon={Wallet} title="No transactions" action={<Button onClick={() => openTransactionSheet("income")}><Plus /> Add transaction</Button>} />} />
     </>
   );

@@ -3,8 +3,8 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { assertPermission, getCurrentUser, ForbiddenError } from "@/server/auth";
-import { must, run, type ActionResult } from "@/server/action";
-import { csv, nul, numOrNull } from "@/lib/validation/common";
+import { must, plural, run, runBulk, type ActionResult } from "@/server/action";
+import { csv, idList, nul, numOrNull } from "@/lib/validation/common";
 import { documentSchema, statusChangeSchema, studentFinalSchema, studentSchema, type StudentFormInput, type StudentFormValues } from "@/lib/validation/student";
 import { ALLOWED_MIME } from "@/lib/constants";
 
@@ -240,4 +240,39 @@ export async function setStudentPhoto(studentId: string, path: string | null): P
     revalidatePath(`/students/${studentId}`);
     return null;
   }, "Photo updated");
+}
+
+// ---------------------------------------------------------------------------
+// Bulk actions (students list)
+// ---------------------------------------------------------------------------
+export async function bulkSetStudentStatus(ids: string[], status: string) {
+  return runBulk(async () => {
+    await assertPermission("students", "edit");
+    const list = idList.parse(ids);
+    const s = statusChangeSchema.shape.status.parse(status);
+    const res = must(await createClient().from("students").update({ status: s }).in("id", list).is("deleted_at", null).select("id")) as { id: string }[];
+    revalidatePath("/students");
+    return { done: res.length, total: list.length };
+  }, (n) => `Status updated for ${plural(n, "student")}`);
+}
+
+export async function bulkAssignCounselor(ids: string[], counselorId: string | null) {
+  return runBulk(async () => {
+    await assertPermission("students", "edit");
+    const list = idList.parse(ids);
+    const cid = counselorId ? z.string().uuid().parse(counselorId) : null;
+    const res = must(await createClient().from("students").update({ counselor_id: cid }).in("id", list).is("deleted_at", null).select("id")) as { id: string }[];
+    revalidatePath("/students");
+    return { done: res.length, total: list.length };
+  }, (n) => (counselorId ? `Counselor assigned to ${plural(n, "student")}` : `Counselor removed from ${plural(n, "student")}`));
+}
+
+export async function bulkDeleteStudents(ids: string[]) {
+  return runBulk(async () => {
+    await assertPermission("students", "delete");
+    const list = idList.parse(ids);
+    const res = must(await createClient().from("students").update({ deleted_at: new Date().toISOString() }).in("id", list).is("deleted_at", null).select("id")) as { id: string }[];
+    revalidatePath("/students");
+    return { done: res.length, total: list.length };
+  }, (n) => `${plural(n, "student")} moved to Deleted items`);
 }

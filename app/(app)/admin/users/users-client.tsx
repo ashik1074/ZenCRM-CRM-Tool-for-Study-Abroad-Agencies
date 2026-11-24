@@ -4,7 +4,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
-import { KeyRound, Loader2, MoreHorizontal, Pencil, Plus, Power, Search } from "lucide-react";
+import { CircleCheck, CircleSlash, KeyRound, Loader2, MoreHorizontal, Pencil, Plus, Power, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -13,8 +13,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { StatusBadge } from "@/components/shared/status-badge";
 import { Field, nativeSelectClass } from "@/components/shared/field";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
+import { BulkBar, RowCheckbox, SelectAllCheckbox, useBulkRun, useSelection } from "@/components/shared/bulk-actions";
 import { fmtDateTime } from "@/lib/format";
-import { createUser, resetUserPassword, sendResetEmail, setUserActive, updateUser } from "@/server/actions/users";
+import { bulkSetUsersActive, createUser, resetUserPassword, sendResetEmail, setUserActive, updateUser } from "@/server/actions/users";
 
 export type UserRow = {
   id: string;
@@ -54,6 +55,8 @@ export function UsersClient({ users, roles, students }: { users: UserRow[]; role
   }, [users, q]);
   const rows = filtered.slice((page - 1) * PAGE, page * PAGE);
   const pages = Math.max(1, Math.ceil(filtered.length / PAGE));
+  const selection = useSelection(rows.map((u) => u.id));
+  const { busy, exec } = useBulkRun(selection);
 
   return (
     <>
@@ -67,9 +70,20 @@ export function UsersClient({ users, roles, students }: { users: UserRow[]; role
         </Button>
       </div>
       <div className="overflow-x-auto rounded-lg border bg-card">
+        <BulkBar selection={selection} busy={busy} className="rounded-t-lg">
+          <Button size="sm" variant="outline" disabled={busy} onClick={() => exec((ids) => bulkSetUsersActive(ids, true))}><CircleCheck /> Reactivate</Button>
+          <ConfirmDialog
+            trigger={<Button size="sm" variant="outline" className="text-destructive hover:text-destructive" disabled={busy}><CircleSlash /> Deactivate</Button>}
+            title={`Deactivate ${selection.count} ${selection.count === 1 ? "user" : "users"}?`}
+            description="They are signed out and can't log in until reactivated. Your own account is skipped."
+            confirmLabel="Deactivate"
+            onConfirm={() => exec((ids) => bulkSetUsersActive(ids, false))}
+          />
+        </BulkBar>
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead className="w-10 pr-0"><SelectAllCheckbox selection={selection} /></TableHead>
               <TableHead>Name</TableHead>
               <TableHead>Email</TableHead>
               <TableHead>Role</TableHead>
@@ -80,7 +94,8 @@ export function UsersClient({ users, roles, students }: { users: UserRow[]; role
           </TableHeader>
           <TableBody>
             {rows.map((u) => (
-              <TableRow key={u.id} className={!u.is_active ? "opacity-60" : undefined}>
+              <TableRow key={u.id} className={!u.is_active ? "opacity-60" : undefined} data-state={selection.has(u.id) ? "selected" : undefined}>
+                <TableCell className="w-10 pr-0"><RowCheckbox selection={selection} id={u.id} label={`Select ${u.full_name}`} /></TableCell>
                 <TableCell className="font-medium">{u.full_name}</TableCell>
                 <TableCell>{u.email}</TableCell>
                 <TableCell>{u.roles?.name}</TableCell>
@@ -108,7 +123,7 @@ export function UsersClient({ users, roles, students }: { users: UserRow[]; role
             ))}
             {rows.length === 0 && (
               <TableRow>
-                <TableCell colSpan={6} className="py-8 text-center text-muted-foreground">No users match your search.</TableCell>
+                <TableCell colSpan={7} className="py-8 text-center text-muted-foreground">No users match your search.</TableCell>
               </TableRow>
             )}
           </TableBody>

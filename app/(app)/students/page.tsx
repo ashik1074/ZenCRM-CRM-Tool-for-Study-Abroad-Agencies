@@ -60,6 +60,12 @@ export default async function StudentsPage({ searchParams }: { searchParams: Sea
         sort={sort}
         dir={dir}
         canCreate={can(user.permissions, "students", "create")}
+        perms={{
+          edit: can(user.permissions, "students", "edit"),
+          delete: can(user.permissions, "students", "delete"),
+          export: can(user.permissions, "students", "export"),
+        }}
+        counselors={counselors}
       />
     </>
   );

@@ -3,7 +3,8 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { assertSystemAdmin } from "@/server/auth";
-import { must, run, type ActionResult } from "@/server/action";
+import { must, plural, run, runBulk, type ActionResult } from "@/server/action";
+import { idList } from "@/lib/validation/common";
 import { resetPasswordSchema, roleSchema, userCreateSchema, userUpdateSchema } from "@/lib/validation/admin";
 import { LOCKED_MODULES } from "@/lib/permissions";
 
@@ -141,4 +142,21 @@ export async function setRolePermissions(roleId: string, permissionIds: string[]
     revalidatePath("/admin/roles");
     return null;
   }, "Permissions saved");
+}
+
+/** Activate or deactivate several users. Your own account is never deactivated. */
+export async function bulkSetUsersActive(ids: string[], active: boolean) {
+  return runBulk(async () => {
+    const me = await assertSystemAdmin();
+    const list = idList.parse(ids);
+    const targets = active ? list : list.filter((id) => id !== me.id);
+    const selfSkipped = targets.length < list.length;
+    if (!targets.length) return { done: 0, total: list.length, note: "You can't deactivate your own account." };
+    const res = must(await createClient().from("profiles").update({ is_active: active, deleted_at: active ? null : new Date().toISOString() }).in("id", targets).select("id")) as { id: string }[];
+    // ban in Supabase Auth too so existing refresh tokens stop working
+    const admin = createServiceClient();
+    await Promise.all(res.map((r) => admin.auth.admin.updateUserById(r.id, { ban_duration: active ? "none" : "876000h" })));
+    revalidatePath("/admin/users");
+    return { done: res.length, total: list.length, note: selfSkipped ? "Your own account was skipped." : undefined };
+  }, (n) => `${plural(n, "user")} ${active ? "reactivated" : "deactivated"}`);
 }

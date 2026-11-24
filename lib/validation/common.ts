@@ -30,3 +30,6 @@ export const csv = (v: string | undefined | null) =>
     .split(",")
     .map((s) => s.trim())
     .filter(Boolean);
+
+/** A bulk-action selection: 1–200 record ids. */
+export const idList = z.array(z.string().uuid()).min(1, "Select at least one record").max(200, "Select at most 200 records at a time");

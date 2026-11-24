@@ -3,10 +3,10 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { assertPermission } from "@/server/auth";
-import { must, run, type ActionResult } from "@/server/action";
-import { nul, numOrNull } from "@/lib/validation/common";
+import { must, plural, run, runBulk, type ActionResult } from "@/server/action";
+import { idList, nul, numOrNull } from "@/lib/validation/common";
 import { applicationSchema, applicationStatusSchema, offerSchema, universitySchema, type OfferInput, type UniversityInput } from "@/lib/validation/offers";
-import { ALLOWED_MIME, MAX_FILE_BYTES } from "@/lib/constants";
+import { ALLOWED_MIME, MAX_FILE_BYTES, OFFER_STATUSES } from "@/lib/constants";
 
 // ---------------------------------------------------------------------------
 // Universities
@@ -164,4 +164,58 @@ export async function deleteApplication(id: string): Promise<ActionResult<null>>
     revalidatePath(`/students/${app.student_id}`);
     return null;
   }, "Application removed");
+}
+
+// ---------------------------------------------------------------------------
+// Bulk actions (universities and offers lists)
+// ---------------------------------------------------------------------------
+export async function bulkSetUniversitiesActive(ids: string[], active: boolean) {
+  return runBulk(async () => {
+    await assertPermission("universities", "edit");
+    const list = idList.parse(ids);
+    const res = must(await createClient().from("universities").update({ is_active: active }).in("id", list).is("deleted_at", null).select("id")) as { id: string }[];
+    revalidatePath("/universities");
+    return { done: res.length, total: list.length };
+  }, (n) => `${n === 1 ? "1 university" : `${n} universities`} marked ${active ? "active" : "inactive"}`);
+}
+
+export async function bulkDeleteUniversities(ids: string[]) {
+  return runBulk(async () => {
+    await assertPermission("universities", "delete");
+    const list = idList.parse(ids);
+    const supabase = createClient();
+    // same rule as single delete: a university with live offers can't be deleted
+    const { data: linked } = await supabase.from("offers").select("university_id").in("university_id", list).is("deleted_at", null);
+    const blocked = new Set(((linked ?? []) as { university_id: string }[]).map((o) => o.university_id));
+    const deletable = list.filter((id) => !blocked.has(id));
+    const res = deletable.length
+      ? (must(await supabase.from("universities").update({ deleted_at: new Date().toISOString() }).in("id", deletable).is("deleted_at", null).select("id")) as { id: string }[])
+      : [];
+    revalidatePath("/universities");
+    const note = blocked.size
+      ? `${blocked.size} skipped because ${blocked.size === 1 ? "it has" : "they have"} offers. Mark ${blocked.size === 1 ? "it" : "them"} inactive instead, or delete the offers first.`
+      : undefined;
+    return { done: res.length, total: list.length, note };
+  }, (n) => (n === 1 ? "1 university deleted" : `${n} universities deleted`));
+}
+
+export async function bulkSetOfferStatus(ids: string[], status: string) {
+  return runBulk(async () => {
+    await assertPermission("offers", "edit");
+    const list = idList.parse(ids);
+    const s = z.enum(OFFER_STATUSES.map((o) => o.value) as [string, ...string[]]).parse(status);
+    const res = must(await createClient().from("offers").update({ status: s }).in("id", list).is("deleted_at", null).select("id")) as { id: string }[];
+    revalidatePath("/offers");
+    return { done: res.length, total: list.length };
+  }, (n) => `Status updated for ${plural(n, "offer")}`);
+}
+
+export async function bulkDeleteOffers(ids: string[]) {
+  return runBulk(async () => {
+    await assertPermission("offers", "delete");
+    const list = idList.parse(ids);
+    const res = must(await createClient().from("offers").update({ deleted_at: new Date().toISOString() }).in("id", list).is("deleted_at", null).select("id")) as { id: string }[];
+    revalidatePath("/offers");
+    return { done: res.length, total: list.length };
+  }, (n) => `${plural(n, "offer")} moved to Deleted items`);
 }

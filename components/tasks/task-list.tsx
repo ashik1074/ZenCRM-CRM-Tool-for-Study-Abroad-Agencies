@@ -2,14 +2,15 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { ChevronLeft, ChevronRight, MessageSquare, Paperclip } from "lucide-react";
+import { ChevronLeft, ChevronRight, Flag, MessageSquare, Paperclip, Tag, UserCog } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { OptionBadge, StatusBadge } from "@/components/shared/status-badge";
 import { useUrlState } from "@/components/shared/use-url-state";
+import { BulkBar, BulkDelete, BulkMenu, RowCheckbox, SelectAllCheckbox, useBulkRun, useSelection } from "@/components/shared/bulk-actions";
 import { TASK_PRIORITIES, TASK_STATUSES, PAGE_SIZE } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 import { daysUntil, fmtDate } from "@/lib/format";
-import { quickUpdateTask } from "@/server/actions/tasks";
+import { bulkDeleteTasks, bulkUpdateTasks, quickUpdateTask } from "@/server/actions/tasks";
 import type { TaskRow } from "@/server/queries/tasks";
 
 const selectCls = "h-8 rounded-md border border-input bg-background px-2 text-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring";
@@ -33,6 +34,7 @@ export function TaskList({
   canEdit,
   meId,
   canEditAll,
+  canDelete = false,
 }: {
   rows: TaskRow[];
   total: number;
@@ -42,11 +44,15 @@ export function TaskList({
   highlight?: boolean;
   canEdit: boolean;
   canEditAll: boolean;
+  canDelete?: boolean;
   meId: string;
 }) {
   const router = useRouter();
   const { set } = useUrlState();
   const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const selection = useSelection(rows.map((t) => t.id));
+  const { busy, exec } = useBulkRun(selection);
+  const selectable = canEdit || canDelete;
 
   async function update(id: string, field: "status" | "assignee_id", value: string | null) {
     const r = await quickUpdateTask({ id, field, value });
@@ -58,6 +64,30 @@ export function TaskList({
 
   return (
     <div className="space-y-2">
+      {selectable && (
+        <BulkBar
+          selection={selection}
+          busy={busy}
+          className="rounded-lg"
+          leading={<SelectAllCheckbox selection={selection} label="Select all tasks in this list" />}
+          idle={<span className="text-xs text-muted-foreground">Select all</span>}
+        >
+          {canEdit && (
+            <>
+              <BulkMenu label="Set status" icon={Tag} disabled={busy} options={TASK_STATUSES} onPick={(v) => exec((ids) => bulkUpdateTasks(ids, "status", v))} />
+              <BulkMenu label="Set priority" icon={Flag} disabled={busy} options={TASK_PRIORITIES} onPick={(v) => exec((ids) => bulkUpdateTasks(ids, "priority", v))} />
+              <BulkMenu
+                label="Assign to"
+                icon={UserCog}
+                disabled={busy}
+                options={[{ value: "", label: "Unassigned" }, ...users.map((u) => ({ value: u.id, label: u.full_name }))]}
+                onPick={(v) => exec((ids) => bulkUpdateTasks(ids, "assignee_id", v || null))}
+              />
+            </>
+          )}
+          {canDelete && <BulkDelete count={selection.count} noun={["task", "tasks"]} disabled={busy} onConfirm={() => exec(bulkDeleteTasks)} />}
+        </BulkBar>
+      )}
       <ul className="space-y-2">
         {rows.map((t) => {
           const editable = canEdit && (canEditAll || [t.assignee_id, t.reporter_id].includes(meId));
@@ -67,11 +97,13 @@ export function TaskList({
               data-testid="task-row"
               className={cn(
                 "flex flex-col gap-2 rounded-lg border bg-card p-3 sm:flex-row sm:items-center",
+                selection.has(t.id) && "ring-2 ring-primary/40",
                 highlight && "border-l-4 border-l-primary bg-primary/[0.04] dark:bg-primary/[0.08]",
               )}
             >
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-2">
+                  {selectable && <RowCheckbox selection={selection} id={t.id} label={`Select ${t.title}`} />}
                   <OptionBadge list={TASK_PRIORITIES} value={t.priority} />
                   <Link href={`?task=${t.id}`} scroll={false} className={cn("font-medium hover:underline", t.status === "done" && "text-muted-foreground line-through")}>
                     {t.title}

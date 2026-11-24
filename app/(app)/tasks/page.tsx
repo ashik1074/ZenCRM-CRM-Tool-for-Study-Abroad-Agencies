@@ -33,7 +33,7 @@ export default async function TasksPage({ searchParams }: { searchParams: Search
   const canEdit = can(user.permissions, "tasks", "edit");
   const canEditAll = can(user.permissions, "tasks_all", "edit");
   const options = { users, sprints };
-  const listProps = { users, canEdit, canEditAll, meId: user.id };
+  const listProps = { users, canEdit, canEditAll, canDelete: can(user.permissions, "tasks", "delete"), meId: user.id };
 
   return (
     <>

@@ -3,8 +3,8 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { assertPermission } from "@/server/auth";
-import { must, run, type ActionResult } from "@/server/action";
-import { csv, nul } from "@/lib/validation/common";
+import { must, plural, run, runBulk, type ActionResult } from "@/server/action";
+import { csv, idList, nul } from "@/lib/validation/common";
 import { commentSchema, sprintSchema, taskSchema, type SprintInput, type TaskInput } from "@/lib/validation/tasks";
 import { sanitizeHtml } from "@/lib/sanitize";
 import { ALLOWED_MIME, MAX_FILE_BYTES, TASK_PRIORITIES, TASK_STATUSES } from "@/lib/constants";
@@ -156,4 +156,31 @@ export async function completeSprint(id: string, moveTo: string | null): Promise
     revalidate();
     return null;
   }, "Sprint completed");
+}
+
+/** Bulk version of quickUpdateTask: set status, priority or assignee on many tasks at once. */
+export async function bulkUpdateTasks(ids: string[], field: "status" | "assignee_id" | "priority", value: string | null) {
+  return runBulk(async () => {
+    await assertPermission("tasks", "edit");
+    const list = idList.parse(ids);
+    const f = quickSchema.shape.field.parse(field);
+    if (f === "status" && !TASK_STATUSES.some((s) => s.value === value)) throw new Error("Unknown status");
+    if (f === "priority" && !TASK_PRIORITIES.some((s) => s.value === value)) throw new Error("Unknown priority");
+    if (f === "assignee_id" && value && !/^[0-9a-f-]{36}$/i.test(value)) throw new Error("Unknown user");
+    const res = must(await createClient().from("tasks").update({ [f]: value || null }).in("id", list).is("deleted_at", null).select("id")) as { id: string }[];
+    revalidate();
+    // RLS only lets non-managers change tasks assigned to or reported by them
+    const skipped = list.length - res.length;
+    return { done: res.length, total: list.length, note: skipped ? `${skipped} skipped: you can only change tasks assigned to or reported by you.` : undefined };
+  }, (n) => `${plural(n, "task")} updated`);
+}
+
+export async function bulkDeleteTasks(ids: string[]) {
+  return runBulk(async () => {
+    await assertPermission("tasks", "delete");
+    const list = idList.parse(ids);
+    const res = must(await createClient().from("tasks").update({ deleted_at: new Date().toISOString() }).in("id", list).is("deleted_at", null).select("id")) as { id: string }[];
+    revalidate();
+    return { done: res.length, total: list.length };
+  }, (n) => `${plural(n, "task")} moved to Deleted items`);
 }

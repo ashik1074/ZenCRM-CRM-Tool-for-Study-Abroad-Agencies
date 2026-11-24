@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { getCurrentUser } from "@/server/auth";
 import { can } from "@/lib/permissions";
 import { studentsQuery } from "@/server/queries/students";
-import { exportResponse } from "@/lib/export";
+import { exportResponse, parseIds } from "@/lib/export";
 
 const COLUMNS = [
   "student_code", "full_name", "gender", "date_of_birth", "nationality", "phone", "whatsapp", "email", "present_address",
@@ -18,7 +18,11 @@ export async function GET(req: NextRequest) {
   if (!can(user.permissions, "students", "export")) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   const params = Object.fromEntries(req.nextUrl.searchParams.entries());
   const format = params.format === "csv" ? "csv" : "xlsx";
-  const { data, error } = await studentsQuery(params, `*, counselor_rel:profiles!students_counselor_id_fkey(full_name)`, { meId: user.id }).limit(10000);
+  const ids = parseIds(params.ids);
+  // "Export selected" sends only ids: ignore list filters so every chosen row is included
+  let query = studentsQuery(ids ? {} : params, `*, counselor_rel:profiles!students_counselor_id_fkey(full_name)`, { meId: user.id });
+  if (ids) query = query.in("id", ids);
+  const { data, error } = await query.limit(10000);
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });
   const rows = ((data ?? []) as unknown as Record<string, unknown>[]).map((r) => ({
     ...r,

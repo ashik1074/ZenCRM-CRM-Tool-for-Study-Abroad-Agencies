@@ -37,3 +37,11 @@ export function exportResponse(rows: Row[], columns: string[], filename: string,
     },
   });
 }
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** `?ids=a,b,c` from "Export selected": valid UUIDs only, or null when the param is absent. */
+export function parseIds(raw: string | null | undefined): string[] | null {
+  if (!raw) return null;
+  return raw.split(",").map((s) => s.trim()).filter((s) => UUID.test(s)).slice(0, 200);
+}

@@ -5,12 +5,22 @@ import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
 import { useUrlState } from "./use-url-state";
+import { BulkBar, RowCheckbox, SelectAllCheckbox, useBulkRun, useSelection, type Selection } from "./bulk-actions";
+
+export type BulkContext<T> = {
+  selection: Selection;
+  /** The selected rows' data, in table order. */
+  rows: T[];
+  busy: boolean;
+  exec: ReturnType<typeof useBulkRun>["exec"];
+};
 
 export type ServerColumn<T> = ColumnDef<T, unknown> & { meta?: { sortKey?: string; className?: string } };
 
 /**
  * Server-driven table: rows, total and page come from the server component;
  * sorting/paging update the URL which triggers a server re-render.
+ * Pass `bulkActions` to add row checkboxes and an action bar for the selected rows.
  */
 export function DataTable<T>({
   columns,
@@ -23,6 +33,8 @@ export function DataTable<T>({
   empty,
   rowClassName,
   getRowId,
+  bulkActions,
+  rowLabel,
 }: {
   columns: ServerColumn<T>[];
   data: T[];
@@ -34,6 +46,10 @@ export function DataTable<T>({
   empty?: React.ReactNode;
   rowClassName?: (row: T) => string | undefined;
   getRowId?: (row: T) => string;
+  /** Actions shown while rows are selected. Omit (or return nothing) to hide the checkboxes. */
+  bulkActions?: (ctx: BulkContext<T>) => React.ReactNode;
+  /** Accessible name for a row's checkbox, e.g. the record's name. */
+  rowLabel?: (row: T) => string;
 }) {
   const { set, pending } = useUrlState();
   const table = useReactTable({
@@ -46,14 +62,29 @@ export function DataTable<T>({
     getRowId: getRowId as never,
   });
   const pages = Math.max(1, Math.ceil(total / size));
+  const rowIds = table.getRowModel().rows.map((r) => r.id);
+  const selection = useSelection(rowIds);
+  const { busy, exec } = useBulkRun(selection);
+  const selectable = !!bulkActions;
+  const colCount = columns.length + (selectable ? 1 : 0);
 
   return (
     <div className={cn("rounded-lg border bg-card transition-opacity", pending && "opacity-60")} aria-busy={pending}>
+      {selectable && (
+        <BulkBar selection={selection} busy={busy} className="rounded-t-lg">
+          {bulkActions({ selection, rows: table.getRowModel().rows.filter((r) => selection.has(r.id)).map((r) => r.original), busy, exec })}
+        </BulkBar>
+      )}
       <div className="overflow-x-auto">
         <Table>
           <TableHeader>
             {table.getHeaderGroups().map((hg) => (
               <TableRow key={hg.id}>
+                {selectable && (
+                  <TableHead className="w-10 pr-0">
+                    <SelectAllCheckbox selection={selection} />
+                  </TableHead>
+                )}
                 {hg.headers.map((h) => {
                   const meta = (h.column.columnDef as ServerColumn<T>).meta;
                   const sortKey = meta?.sortKey;
@@ -86,13 +117,18 @@ export function DataTable<T>({
           <TableBody>
             {table.getRowModel().rows.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={columns.length} className="p-0">
+                <TableCell colSpan={colCount} className="p-0">
                   <div className="p-4">{empty ?? <p className="py-8 text-center text-sm text-muted-foreground">No records found.</p>}</div>
                 </TableCell>
               </TableRow>
             ) : (
               table.getRowModel().rows.map((row) => (
-                <TableRow key={row.id} className={rowClassName?.(row.original)}>
+                <TableRow key={row.id} className={rowClassName?.(row.original)} data-state={selectable && selection.has(row.id) ? "selected" : undefined}>
+                  {selectable && (
+                    <TableCell className="w-10 pr-0">
+                      <RowCheckbox selection={selection} id={row.id} label={`Select ${rowLabel?.(row.original) ?? "row"}`} />
+                    </TableCell>
+                  )}
                   {row.getVisibleCells().map((cell) => (
                     <TableCell key={cell.id} className={(cell.column.columnDef as ServerColumn<T>).meta?.className}>
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}

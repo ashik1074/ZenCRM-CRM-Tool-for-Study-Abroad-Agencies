@@ -1,11 +1,13 @@
 "use client";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Download, FileBadge, Plus } from "lucide-react";
+import { Download, FileBadge, Plus, Tag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { DataTable, type ServerColumn } from "@/components/shared/data-table";
 import { EmptyState } from "@/components/shared/empty-state";
+import { BulkDelete, BulkExport, BulkMenu } from "@/components/shared/bulk-actions";
+import { bulkDeleteOffers, bulkSetOfferStatus } from "@/server/actions/offers";
 import { ClearFilters, DateRangeFilter, FilterBar, SearchFilter, SelectFilter } from "@/components/shared/list-filters";
 import { OptionBadge, StatusBadge } from "@/components/shared/status-badge";
 import { OfferModal } from "@/components/offers/offer-modal";
@@ -121,6 +123,18 @@ export function OffersClient(props: {
         sort={props.sort}
         dir={props.dir}
         getRowId={(r) => r.id}
+        rowLabel={(r) => r.title}
+        bulkActions={
+          props.perms.edit || props.perms.delete || props.perms.export
+            ? ({ selection, busy, exec }) => (
+                <>
+                  {props.perms.edit && <BulkMenu label="Set status" icon={Tag} disabled={busy} options={OFFER_STATUSES} onPick={(v) => exec((ids) => bulkSetOfferStatus(ids, v))} />}
+                  {props.perms.export && <BulkExport endpoint="/api/export/offers" ids={selection.ids} disabled={busy} />}
+                  {props.perms.delete && <BulkDelete count={selection.count} noun={["offer", "offers"]} disabled={busy} onConfirm={() => exec(bulkDeleteOffers)} />}
+                </>
+              )
+            : undefined
+        }
         empty={<EmptyState icon={FileBadge} title="No offers match" description="Change the filters or add a new offer." action={props.perms.create && <Button onClick={() => setEditingId("new")}><Plus /> Add offer</Button>} />}
       />
       {openId && (

@@ -54,3 +54,21 @@ export function must<T>(res: { data: T; error: unknown }): NonNullable<T> {
   if (res.error) throw res.error;
   return res.data as NonNullable<T>;
 }
+
+export type BulkResult = { done: number; total: number; note?: string };
+
+export const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
+
+/**
+ * Run a bulk mutation. `fn` reports how many of the selected records changed; RLS silently skips rows the
+ * user can't touch, so a shortfall is reported instead of claiming full success.
+ */
+export async function runBulk(fn: () => Promise<BulkResult>, describe: (done: number) => string): Promise<ActionResult<BulkResult>> {
+  const r = await run(fn);
+  if (!r.ok) return r;
+  const { done, total, note } = r.data;
+  if (done === 0) return { ok: false, error: note ?? "Nothing was changed. You may not have access to the selected records." };
+  const skipped = total - done;
+  const tail = note ?? (skipped ? `${skipped} could not be changed (no access).` : "");
+  return { ok: true, data: r.data, message: [describe(done), tail].filter(Boolean).join(". ") };
+}

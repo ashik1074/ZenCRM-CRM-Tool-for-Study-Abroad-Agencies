@@ -1,10 +1,12 @@
 "use client";
 import Link from "next/link";
-import { GraduationCap, Plus } from "lucide-react";
+import { GraduationCap, Plus, Tag, UserCog } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { DataTable, type ServerColumn } from "@/components/shared/data-table";
 import { EmptyState } from "@/components/shared/empty-state";
+import { BulkDelete, BulkExport, BulkMenu } from "@/components/shared/bulk-actions";
+import { bulkAssignCounselor, bulkDeleteStudents, bulkSetStudentStatus } from "@/server/actions/students";
 import { OptionBadge, StatusBadge } from "@/components/shared/status-badge";
 import { STUDENT_STATUSES } from "@/lib/constants";
 import { fmtDate, initials } from "@/lib/format";
@@ -67,7 +69,19 @@ const columns: ServerColumn<StudentListRow>[] = [
   { id: "created", header: "Created", meta: { sortKey: "created" }, cell: ({ row }) => <span className="whitespace-nowrap">{fmtDate(row.original.created_at)}</span> },
 ];
 
-export function StudentsTable(props: { rows: StudentListRow[]; total: number; page: number; size: number; sort: string; dir: "asc" | "desc"; canCreate: boolean }) {
+export function StudentsTable(props: {
+  rows: StudentListRow[];
+  total: number;
+  page: number;
+  size: number;
+  sort: string;
+  dir: "asc" | "desc";
+  canCreate: boolean;
+  perms: { edit: boolean; delete: boolean; export: boolean };
+  counselors: { id: string; full_name: string }[];
+}) {
+  const { perms } = props;
+  const anyBulk = perms.edit || perms.delete || perms.export;
   return (
     <DataTable
       columns={columns}
@@ -78,6 +92,29 @@ export function StudentsTable(props: { rows: StudentListRow[]; total: number; pa
       sort={props.sort}
       dir={props.dir}
       getRowId={(r) => r.id}
+      rowLabel={(r) => r.full_name}
+      bulkActions={
+        anyBulk
+          ? ({ selection, busy, exec }) => (
+              <>
+                {perms.edit && (
+                  <>
+                    <BulkMenu label="Set status" icon={Tag} disabled={busy} options={STUDENT_STATUSES} onPick={(v) => exec((ids) => bulkSetStudentStatus(ids, v))} />
+                    <BulkMenu
+                      label="Assign counselor"
+                      icon={UserCog}
+                      disabled={busy}
+                      options={[{ value: "", label: "Unassigned" }, ...props.counselors.map((c) => ({ value: c.id, label: c.full_name }))]}
+                      onPick={(v) => exec((ids) => bulkAssignCounselor(ids, v || null))}
+                    />
+                  </>
+                )}
+                {perms.export && <BulkExport endpoint="/api/export/students" ids={selection.ids} disabled={busy} />}
+                {perms.delete && <BulkDelete count={selection.count} noun={["student", "students"]} disabled={busy} onConfirm={() => exec(bulkDeleteStudents)} />}
+              </>
+            )
+          : undefined
+      }
       empty={
         <EmptyState
           icon={GraduationCap}

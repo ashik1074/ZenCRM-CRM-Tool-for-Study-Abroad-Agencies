@@ -5,7 +5,7 @@ import { ArchiveRestore, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DataTable, type ServerColumn } from "@/components/shared/data-table";
 import { EmptyState } from "@/components/shared/empty-state";
-import { restoreItem } from "@/server/actions/trash";
+import { bulkRestoreItems, restoreItem } from "@/server/actions/trash";
 
 type Row = { id: string; label: string; deleted_at: string };
 
@@ -27,5 +27,25 @@ export function TrashList({ table, rows, total, page, size, canRestore }: { tabl
       ),
     },
   ];
-  return <DataTable columns={columns} data={rows} total={total} page={page} size={size} getRowId={(r) => r.id} empty={<EmptyState icon={Trash2} title="Nothing deleted here" />} />;
+  return (
+    <DataTable
+      columns={columns}
+      data={rows}
+      total={total}
+      page={page}
+      size={size}
+      getRowId={(r) => r.id}
+      rowLabel={(r) => r.label}
+      bulkActions={
+        canRestore
+          ? ({ busy, exec }) => (
+              <Button size="sm" variant="outline" disabled={busy} onClick={() => exec((ids) => bulkRestoreItems(table, ids))}>
+                <ArchiveRestore /> Restore selected
+              </Button>
+            )
+          : undefined
+      }
+      empty={<EmptyState icon={Trash2} title="Nothing deleted here" />}
+    />
+  );
 }

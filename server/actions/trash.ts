@@ -3,7 +3,8 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { assertPermission } from "@/server/auth";
-import { must, run, type ActionResult } from "@/server/action";
+import { must, plural, run, runBulk, type ActionResult } from "@/server/action";
+import { idList } from "@/lib/validation/common";
 
 const TABLES = ["students", "offers", "tasks", "transactions"] as const;
 
@@ -18,4 +19,16 @@ export async function restoreItem(table: (typeof TABLES)[number], id: string): P
     revalidatePath(`/${table === "transactions" ? "finance/transactions" : table}`);
     return null;
   }, "Restored");
+}
+
+export async function bulkRestoreItems(table: (typeof TABLES)[number], ids: string[]) {
+  return runBulk(async () => {
+    await assertPermission("trash", "edit");
+    if (!TABLES.includes(table)) throw new Error("Unknown record type");
+    const list = idList.parse(ids);
+    const res = must(await createClient().from(table).update({ deleted_at: null }).in("id", list).select("id")) as { id: string }[];
+    revalidatePath("/trash");
+    revalidatePath(`/${table === "transactions" ? "finance/transactions" : table}`);
+    return { done: res.length, total: list.length };
+  }, (n) => `${plural(n, "record")} restored`);
 }

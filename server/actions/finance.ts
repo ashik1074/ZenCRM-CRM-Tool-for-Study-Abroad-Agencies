@@ -3,8 +3,8 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { assertPermission } from "@/server/auth";
-import { must, run, type ActionResult } from "@/server/action";
-import { nul } from "@/lib/validation/common";
+import { must, plural, run, runBulk, type ActionResult } from "@/server/action";
+import { idList, nul } from "@/lib/validation/common";
 import { categorySchema, feePlanSchema, transactionSchema, type FeePlanInput, type TransactionInput } from "@/lib/validation/finance";
 
 function revalidate(studentId?: string | null) {
@@ -179,4 +179,15 @@ export async function deleteFeePlan(id: string): Promise<ActionResult<null>> {
     revalidate(p.student_id);
     return null;
   }, "Fee plan deleted");
+}
+
+export async function bulkDeleteTransactions(ids: string[]) {
+  return runBulk(async () => {
+    await assertPermission("finance", "delete");
+    const list = idList.parse(ids);
+    const res = must(await createClient().from("transactions").update({ deleted_at: new Date().toISOString() }).in("id", list).is("deleted_at", null).select("id, student_id")) as { id: string; student_id: string | null }[];
+    revalidate();
+    for (const sid of new Set(res.map((t) => t.student_id).filter(Boolean) as string[])) revalidatePath(`/students/${sid}`);
+    return { done: res.length, total: list.length };
+  }, (n) => `${plural(n, "transaction")} moved to Deleted items`);
 }

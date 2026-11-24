@@ -5,7 +5,7 @@ import { useState, useTransition } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
-import { ExternalLink, Landmark, Loader2, Pencil, Plus, Trash2 } from "lucide-react";
+import { CircleCheck, CircleSlash, ExternalLink, Landmark, Loader2, Pencil, Plus, Trash2 } from "lucide-react";
 import type { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -16,11 +16,12 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { DataTable, type ServerColumn } from "@/components/shared/data-table";
 import { EmptyState } from "@/components/shared/empty-state";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
+import { BulkDelete } from "@/components/shared/bulk-actions";
 import { Field } from "@/components/shared/field";
 import { ClearFilters, FilterBar, SearchFilter, SelectFilter } from "@/components/shared/list-filters";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { universitySchema, type UniversityInput } from "@/lib/validation/offers";
-import { deleteUniversity, saveUniversity } from "@/server/actions/offers";
+import { bulkDeleteUniversities, bulkSetUniversitiesActive, deleteUniversity, saveUniversity } from "@/server/actions/offers";
 
 export type UniversityRow = {
   id: string; name: string; city: string | null; province: string | null; ranking: number | null; website: string | null;
@@ -82,6 +83,30 @@ export function UniversitiesClient(props: {
       <DataTable
         columns={columns} data={props.rows} total={props.total} page={props.page} size={props.size} sort={props.sort} dir={props.dir}
         getRowId={(r) => r.id}
+        rowLabel={(r) => r.name}
+        bulkActions={
+          props.perms.edit || props.perms.delete
+            ? ({ selection, busy, exec }) => (
+                <>
+                  {props.perms.edit && (
+                    <>
+                      <Button size="sm" variant="outline" disabled={busy} onClick={() => exec((ids) => bulkSetUniversitiesActive(ids, true))}><CircleCheck /> Mark active</Button>
+                      <Button size="sm" variant="outline" disabled={busy} onClick={() => exec((ids) => bulkSetUniversitiesActive(ids, false))}><CircleSlash /> Mark inactive</Button>
+                    </>
+                  )}
+                  {props.perms.delete && (
+                    <BulkDelete
+                      count={selection.count}
+                      noun={["university", "universities"]}
+                      disabled={busy}
+                      description="Universities that still have offers are skipped. Mark those inactive instead."
+                      onConfirm={() => exec(bulkDeleteUniversities)}
+                    />
+                  )}
+                </>
+              )
+            : undefined
+        }
         empty={<EmptyState icon={Landmark} title="No universities" action={props.perms.create && <Button onClick={() => setEditing("new")}><Plus /> Add university</Button>} />}
       />
       {editing && <UniversityDialog row={editing === "new" ? null : editing} readOnly={!props.perms.edit && editing !== "new"} onClose={() => setEditing(null)} />}
